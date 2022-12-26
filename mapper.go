@@ -6,6 +6,8 @@ import (
 	"reflect"
 )
 
+const mapperConnector = "--"
+
 type MapperFunc func(any) (any, error)
 
 type IMapper interface {
@@ -38,12 +40,12 @@ func UnregisterMapping(from, to string) {
 }
 
 type defaultMapper struct {
-	valueMap map[string]map[string]MapperFunc
+	valueMap map[string]MapperFunc
 }
 
 func NewDefaultMapper() IMapper {
 	return &defaultMapper{
-		make(map[string]map[string]MapperFunc),
+		make(map[string]MapperFunc),
 	}
 }
 
@@ -58,19 +60,12 @@ func (d *defaultMapper) Map(source, dest interface{}, loose bool) {
 }
 
 func (d *defaultMapper) RegisterMapping(from, to string, f MapperFunc) {
-	v, ok := d.valueMap[from]
-	if !ok {
-		v = make(map[string]MapperFunc)
-		d.valueMap[from] = v
-	}
-	v[to] = f
+	d.valueMap[from+mapperConnector+to] = f
 }
 
 func (d *defaultMapper) UnregisterMapping(from, to string) {
-	if k, ok := d.valueMap[from]; ok {
-		if _, ok := k[to]; ok {
-			delete(k, to)
-		}
+	if _, ok := d.valueMap[from+mapperConnector+to]; ok {
+		delete(d.valueMap, from+mapperConnector+to)
 	}
 }
 
@@ -78,11 +73,7 @@ func (d *defaultMapper) mapCustom(source, destVal reflect.Value) error {
 	s := source.Type().String()
 	t := destVal.Type().String()
 
-	g, ok := d.valueMap[s]
-	if !ok {
-		return errors.New(fmt.Sprintf("cannot find convertor for from %s to %s", s, t))
-	}
-	f, ok := g[t]
+	f, ok := d.valueMap[s+mapperConnector+t]
 	if !ok {
 		return errors.New(fmt.Sprintf("cannot find convertor for from %s to %s", s, t))
 	}
