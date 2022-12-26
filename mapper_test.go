@@ -381,3 +381,73 @@ func TestMapWithSameType(t *testing.T) {
 	assert.Equal(t, source.B.Foo, dest.B.Foo, "cannot map bar")
 	assert.Equal(t, source.B.Bar, dest.B.Bar, "cannot map bar")
 }
+
+type SourceTypeBPtr struct {
+	A SourceTypeA
+	B *SourceTypeA
+}
+
+type DestTypeBPtr struct {
+	A DestTypeA
+	B *SourceTypeA
+}
+
+func TestMapWithSameDestTypePtr(t *testing.T) {
+	source := SourceTypeB{
+		SourceTypeA{
+			1,
+			"test1",
+		},
+		SourceTypeA{
+			2,
+			"test2",
+		},
+	}
+	dest := DestTypeBPtr{}
+
+	Map(source, &dest, false)
+	assert.Equal(t, source.A.Foo, dest.A.Foo, "cannot map bar")
+	assert.Equal(t, source.A.Bar, dest.A.Bar, "cannot map bar")
+	assert.Equal(t, source.B.Foo, dest.B.Foo, "cannot map bar")
+	assert.Equal(t, source.B.Bar, dest.B.Bar, "cannot map bar")
+}
+
+func TestMapWithSameSourceTypePtr(t *testing.T) {
+	source := SourceTypeBPtr{
+		SourceTypeA{
+			1,
+			"test1",
+		},
+		&SourceTypeA{
+			2,
+			"test2",
+		},
+	}
+	dest := DestTypeB{}
+
+	Map(source, &dest, false)
+	assert.Equal(t, source.A.Foo, dest.A.Foo, "cannot map bar")
+	assert.Equal(t, source.A.Bar, dest.A.Bar, "cannot map bar")
+	assert.Equal(t, source.B.Foo, dest.B.Foo, "cannot map bar")
+	assert.Equal(t, source.B.Bar, dest.B.Bar, "cannot map bar")
+}
+
+func TestMapWithSameTypeBothPtr(t *testing.T) {
+	source := SourceTypeBPtr{
+		SourceTypeA{
+			1,
+			"test1",
+		},
+		&SourceTypeA{
+			2,
+			"test2",
+		},
+	}
+	dest := DestTypeBPtr{}
+
+	Map(source, &dest, false)
+	assert.Equal(t, source.A.Foo, dest.A.Foo, "cannot map bar")
+	assert.Equal(t, source.A.Bar, dest.A.Bar, "cannot map bar")
+	assert.Equal(t, source.B.Foo, dest.B.Foo, "cannot map bar")
+	assert.Equal(t, source.B.Bar, dest.B.Bar, "cannot map bar")
+}
