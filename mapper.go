@@ -80,11 +80,11 @@ func (d *defaultMapper) mapCustom(source, destVal reflect.Value) error {
 
 	g, ok := d.valueMap[s]
 	if !ok {
-		return errors.New("cannot find convertor")
+		return errors.New(fmt.Sprintf("cannot find convertor for from %s to %s", s, t))
 	}
 	f, ok := g[t]
 	if !ok {
-		return errors.New("cannot find convertor")
+		return errors.New(fmt.Sprintf("cannot find convertor for from %s to %s", s, t))
 	}
 
 	v, err := f(source.Interface())
@@ -123,7 +123,7 @@ func (d *defaultMapper) mapValues(sourceVal, destVal reflect.Value, loose bool) 
 	} else {
 		err := d.mapCustom(sourceVal, destVal)
 		if err != nil {
-			panic("Currently not supported")
+			panic("Currently not supported: " + err.Error())
 		}
 	}
 }
