@@ -15,6 +15,28 @@ type IMapper interface {
 	UnregisterMapping(from, to string)
 }
 
+var mapper IMapper
+
+func init() {
+	mapper = NewDefaultMapper()
+}
+
+func GetMapper() IMapper {
+	return mapper
+}
+
+func Map(source, dest interface{}, loose bool) {
+	mapper.Map(source, dest, loose)
+}
+
+func RegisterMapping(from, to string, f MapperFunc) {
+	mapper.RegisterMapping(from, to, f)
+}
+
+func UnregisterMapping(from, to string) {
+	mapper.UnregisterMapping(from, to)
+}
+
 type defaultMapper struct {
 	valueMap map[string]map[string]MapperFunc
 }
