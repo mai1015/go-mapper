@@ -19,7 +19,7 @@ type defaultMapper struct {
 	valueMap map[string]map[string]MapperFunc
 }
 
-func newDefaultMapper() IMapper {
+func NewDefaultMapper() IMapper {
 	return &defaultMapper{
 		make(map[string]map[string]MapperFunc),
 	}
