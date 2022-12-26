@@ -351,3 +351,33 @@ type SourceParent struct {
 type DestParent struct {
 	Children []DestTypeA
 }
+
+type SourceTypeB struct {
+	A SourceTypeA
+	B SourceTypeA
+}
+
+type DestTypeB struct {
+	A DestTypeA
+	B SourceTypeA
+}
+
+func TestMapWithSameType(t *testing.T) {
+	source := SourceTypeB{
+		SourceTypeA{
+			1,
+			"test1",
+		},
+		SourceTypeA{
+			2,
+			"test2",
+		},
+	}
+	dest := DestTypeB{}
+
+	Map(source, &dest, false)
+	assert.Equal(t, source.A.Foo, dest.A.Foo, "cannot map bar")
+	assert.Equal(t, source.A.Bar, dest.A.Bar, "cannot map bar")
+	assert.Equal(t, source.B.Foo, dest.B.Foo, "cannot map bar")
+	assert.Equal(t, source.B.Bar, dest.B.Bar, "cannot map bar")
+}
