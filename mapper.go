@@ -126,7 +126,7 @@ func (d *defaultMapper) mapValues(sourceVal, destVal reflect.Value, loose bool) 
 	// if same, set it
 	if destType == sourceVal.Type() {
 		destVal.Set(sourceVal)
-	} else if d.IsWrapperType(sourceVal) || d.IsWrapperType(destVal) {
+	} else if (d.IsWrapperType(sourceVal) || d.IsWrapperType(destVal)) && destType.Kind() != reflect.Ptr {
 		err := d.mapCustom(sourceVal, destVal)
 		if err == nil {
 			return
