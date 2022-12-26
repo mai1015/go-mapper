@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 )
 
 const mapperConnector = "--"
@@ -15,6 +16,7 @@ type IMapper interface {
 
 	RegisterMapping(from, to string, f MapperFunc)
 	UnregisterMapping(from, to string)
+	SetWrapperType(typeStr string, wrapper bool)
 }
 
 var mapper IMapper
@@ -39,14 +41,37 @@ func UnregisterMapping(from, to string) {
 	mapper.UnregisterMapping(from, to)
 }
 
+func SetWrapperType(typeStr string, wrapper bool) {
+	mapper.SetWrapperType(typeStr, wrapper)
+}
+
 type defaultMapper struct {
-	valueMap map[string]MapperFunc
+	valueMap   map[string]MapperFunc
+	wrapperMap map[string]bool
+	lock       sync.RWMutex
 }
 
 func NewDefaultMapper() IMapper {
 	return &defaultMapper{
 		make(map[string]MapperFunc),
+		make(map[string]bool),
+		sync.RWMutex{},
 	}
+}
+
+func (d *defaultMapper) SetWrapperType(typeStr string, wrapper bool) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	d.wrapperMap[typeStr] = wrapper
+}
+
+func (d *defaultMapper) IsWrapperType(source reflect.Value) bool {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+
+	w, ok := d.wrapperMap[source.Type().String()]
+	return ok && w
 }
 
 func (d *defaultMapper) Map(source, dest interface{}, loose bool) {
@@ -60,10 +85,16 @@ func (d *defaultMapper) Map(source, dest interface{}, loose bool) {
 }
 
 func (d *defaultMapper) RegisterMapping(from, to string, f MapperFunc) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
 	d.valueMap[from+mapperConnector+to] = f
 }
 
 func (d *defaultMapper) UnregisterMapping(from, to string) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
 	if _, ok := d.valueMap[from+mapperConnector+to]; ok {
 		delete(d.valueMap, from+mapperConnector+to)
 	}
@@ -72,6 +103,9 @@ func (d *defaultMapper) UnregisterMapping(from, to string) {
 func (d *defaultMapper) mapCustom(source, destVal reflect.Value) error {
 	s := source.Type().String()
 	t := destVal.Type().String()
+
+	d.lock.RLock()
+	defer d.lock.RUnlock()
 
 	f, ok := d.valueMap[s+mapperConnector+t]
 	if !ok {
@@ -89,7 +123,19 @@ func (d *defaultMapper) mapCustom(source, destVal reflect.Value) error {
 
 func (d *defaultMapper) mapValues(sourceVal, destVal reflect.Value, loose bool) {
 	destType := destVal.Type()
-	if destType.Kind() == reflect.Struct {
+	if d.IsWrapperType(sourceVal) || d.IsWrapperType(destVal) {
+		err := d.mapWrapper(sourceVal, destVal, loose)
+		if err == nil {
+			return
+		}
+
+		err = d.mapCustom(sourceVal, destVal)
+		if err != nil {
+			panic("Failed to convert wrapper type: " + err.Error())
+		}
+	} else if destType == sourceVal.Type() {
+		destVal.Set(sourceVal)
+	} else if destType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
 			if sourceVal.IsNil() {
 				// If source is nil, it maps to an empty struct
@@ -100,8 +146,6 @@ func (d *defaultMapper) mapValues(sourceVal, destVal reflect.Value, loose bool) 
 		for i := 0; i < destVal.NumField(); i++ {
 			d.mapField(sourceVal, destVal, i, loose)
 		}
-	} else if destType == sourceVal.Type() {
-		destVal.Set(sourceVal)
 	} else if destType.Kind() == reflect.Ptr {
 		if d.valueIsNil(sourceVal) {
 			return
@@ -139,6 +183,24 @@ func (d *defaultMapper) verifyArrayTypesAreCompatible(sourceVal, destVal reflect
 	dummyDest := reflect.New(reflect.PtrTo(destVal.Type()))
 	dummySource := reflect.MakeSlice(sourceVal.Type(), 1, 1)
 	d.mapValues(dummySource, dummyDest.Elem(), loose)
+}
+
+func (d *defaultMapper) mapWrapper(source, destVal reflect.Value, loose bool) error {
+	if d.IsWrapperType(source) {
+		if source.NumField() > 1 {
+			return errors.New("too many field to mapper for source")
+		}
+		return d.mapWrapper(source.Field(0), destVal, loose)
+	}
+	if d.IsWrapperType(destVal) {
+		if destVal.NumField() > 1 {
+			return errors.New("too many field to mapper for dest val")
+		}
+		return d.mapWrapper(source, destVal.Field(0), loose)
+	}
+
+	d.mapValues(source, destVal, loose)
+	return nil
 }
 
 func (d *defaultMapper) mapField(source, destVal reflect.Value, i int, loose bool) {
