@@ -123,7 +123,10 @@ func (d *defaultMapper) mapCustom(source, destVal reflect.Value) error {
 
 func (d *defaultMapper) mapValues(sourceVal, destVal reflect.Value, loose bool) {
 	destType := destVal.Type()
-	if d.IsWrapperType(sourceVal) || d.IsWrapperType(destVal) {
+	// if same, set it
+	if destType == sourceVal.Type() {
+		destVal.Set(sourceVal)
+	} else if d.IsWrapperType(sourceVal) || d.IsWrapperType(destVal) {
 		err := d.mapWrapper(sourceVal, destVal, loose)
 		if err == nil {
 			return
@@ -133,8 +136,6 @@ func (d *defaultMapper) mapValues(sourceVal, destVal reflect.Value, loose bool) 
 		if err != nil {
 			panic("Failed to convert wrapper type: " + err.Error())
 		}
-	} else if destType == sourceVal.Type() {
-		destVal.Set(sourceVal)
 	} else if destType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
 			if sourceVal.IsNil() {
