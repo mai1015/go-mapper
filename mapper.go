@@ -3,6 +3,7 @@ package go_mapper
 import (
 	"errors"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"reflect"
 	"sync"
 )
@@ -29,8 +30,14 @@ func GetMapper() IMapper {
 	return mapper
 }
 
-func Map(source, dest interface{}, loose bool) {
+func Map(source, dest interface{}, loose bool) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New(spew.Sprintf("%v", r))
+		}
+	}()
 	mapper.Map(source, dest, loose)
+	return nil
 }
 
 func RegisterMapping(from, to string, f MapperFunc) {
