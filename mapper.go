@@ -37,7 +37,7 @@ func Map(source, dest interface{}, loose bool) (err error) {
 		}
 	}()
 	mapper.Map(source, dest, loose)
-	return nil
+	return
 }
 
 func RegisterMapping(from, to string, f MapperFunc) {
@@ -216,7 +216,9 @@ func (d *defaultMapper) mapField(source, destVal reflect.Value, i int, loose boo
 	fieldName := destType.Field(i).Name
 	defer func() {
 		if r := recover(); r != nil {
-			panic(fmt.Sprintf("Error mapping field: %s. DestType: %v. SourceType: %v. Error: %v", fieldName, destType, source.Type(), r))
+			if !loose {
+				panic(fmt.Sprintf("Error mapping field: %s. DestType: %v. SourceType: %v. Error: %v", fieldName, destType, source.Type(), r))
+			}
 		}
 	}()
 
